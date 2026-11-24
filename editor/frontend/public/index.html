@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self';" />
+  <title>台灣公文產生器 Taiwan Official Document Editor</title>
+  <link rel="stylesheet" href="/vendor/quill/quill.snow.css" />
+  <link rel="stylesheet" href="/app.css" />
+  <!-- jszip must load first: docx-preview's UMD bundle reads the global JSZip -->
+  <script src="/vendor/jszip/jszip.min.js" defer></script>
+  <script src="/vendor/docx-preview/docx-preview.min.js" defer></script>
+  <script src="/vendor/quill/quill.js" defer></script>
+  <script src="ui.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="api.js" defer></script>
+  <script src="preview.js" defer></script>
+  <script src="editor.js" defer></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <div class="window">
+
+    <!-- 自訂頂部功能表（已隱藏系統預設功能表） -->
+    <header class="menubar">
+      <div class="brand">
+        <span class="brand-logo" aria-label="TODE">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path class="bl-doc" d="M11 5h12l6 6v24a0 0 0 0 1 0 0H11a0 0 0 0 1 0 0z"/><path class="bl-fold" d="M23 5v6h6z"/></svg>
+          <span class="bl-text">TODE</span>
+        </span>
+        <span class="brand-title">
+          <span class="brand-zh">台灣公文產生器</span>
+          <span class="brand-en">Taiwan Official Document Editor</span>
+        </span>
+      </div>
+      <nav class="menu">
+        <button class="menu-item" id="menu-new">
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
+          <span>新增公文</span>
+        </button>
+        <button class="menu-item" id="menu-open" aria-haspopup="dialog">
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>
+          <span>讀取公文</span>
+        </button>
+        <button class="menu-item" id="menu-save" disabled>
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+          <span>儲存公文</span>
+        </button>
+        <button class="menu-item" id="menu-saveas" disabled>
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/><path d="M15 12v6"/><path d="M12 15h6"/></svg>
+          <span>另存公文</span>
+        </button>
+        <button class="menu-item menu-item-danger" id="menu-delete" disabled>
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          <span>刪除公文</span>
+        </button>
+      </nav>
+
+      <!-- 右側：系統管理 -->
+      <div class="menu-group menu-right">
+        <button class="menu-item" id="menu-admin" aria-haspopup="true" aria-expanded="false">
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>系統管理</span>
+          <span class="caret">▾</span>
+        </button>
+        <div class="dropdown dropdown-right" id="admin-dropdown" hidden>
+          <button class="dropdown-action" id="admin-company">
+            <svg class="dd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg>
+            <span>公司資料維護</span>
+          </button>
+          <button class="dropdown-action" id="admin-docnum">
+            <svg class="dd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>
+            <span>文號維護</span>
+          </button>
+          <button class="dropdown-action" id="admin-org">
+            <svg class="dd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
+            <span>機關單位維護</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="app">
+      <!-- 左半：編輯區 -->
+      <section class="pane pane-left" id="design-pane">
+        <div class="editor-empty" id="editor-empty">
+          <p>尚未開啟公文</p>
+          <p class="hint">由上方功能表「新增公文」或「讀取公文」開始。</p>
+        </div>
+
+        <form class="editor-form" id="editor-form" hidden autocomplete="off">
+          <div class="editor-head">
+            <span class="editor-id" id="editor-id"></span>
+            <span class="save-state" id="save-state"></span>
+          </div>
+
+          <!-- 字號 / 流水號 / 取號 -->
+          <div class="field-row">
+            <label class="field field-sm">
+              <span class="field-label">字號</span>
+              <select id="f-code"></select>
+            </label>
+            <label class="field field-sm">
+              <span class="field-label">流水號</span>
+              <input type="text" id="f-serial" readonly placeholder="尚未取號" />
+            </label>
+            <button type="button" class="btn" id="btn-issue">取號</button>
+          </div>
+
+          <!-- 受文者（統編／單位名稱整合搜尋，從機關單位 SQLite 查詢） -->
+          <div class="field">
+            <span class="field-label">受文者</span>
+            <span class="unit-search">
+              <input type="hidden" id="f-recipient-tax" />
+              <input type="text" id="f-recipient-name" placeholder="輸入統一編號或單位名稱搜尋…" autocomplete="off" />
+              <div class="unit-dd" id="f-recipient-dd" hidden></div>
+            </span>
+          </div>
+
+          <div class="field-row">
+            <!-- 發文公司 -->
+            <label class="field field-grow-1">
+              <span class="field-label">發文公司</span>
+              <select id="f-company"></select>
+            </label>
+            <!-- 發文日期 -->
+            <label class="field field-sm">
+              <span class="field-label">發文日期</span>
+              <input type="date" id="f-date" />
+            </label>
+            <!-- 速別 -->
+            <label class="field field-sm">
+              <span class="field-label">速別</span>
+              <select id="f-priority"></select>
+            </label>
+          </div>
+
+          <!-- 附件（可多筆） -->
+          <div class="field">
+            <span class="field-label">
+              附件
+              <button type="button" class="icon-btn" id="btn-attach-add" title="新增附件">＋</button>
+            </span>
+            <div class="multi-list" id="attach-list"></div>
+          </div>
+
+          <!-- 主旨 -->
+          <label class="field">
+            <span class="field-label">主旨</span>
+            <textarea id="f-subject" rows="2" placeholder="公文主旨"></textarea>
+          </label>
+
+          <!-- 說明（richtext） -->
+          <div class="field field-grow">
+            <span class="field-label">說明</span>
+            <div class="quill-host"><div id="quill-explanation"></div></div>
+          </div>
+
+          <!-- 正本（同受文者，可多筆） -->
+          <div class="field">
+            <span class="field-label">
+              正本
+              <button type="button" class="icon-btn" id="btn-original-add" title="新增正本">＋</button>
+            </span>
+            <div class="multi-list" id="originals-list"></div>
+          </div>
+
+          <!-- 副本（同受文者，可多筆） -->
+          <div class="field">
+            <span class="field-label">
+              副本
+              <button type="button" class="icon-btn" id="btn-copy-add" title="新增副本">＋</button>
+            </span>
+            <div class="multi-list" id="copies-list"></div>
+          </div>
+        </form>
+      </section>
+
+      <div class="divider" role="separator" aria-orientation="vertical"></div>
+
+      <!-- 右半：公文即時預覽區 -->
+      <section class="pane pane-right">
+        <header class="preview-bar">
+          <span class="preview-title" id="preview-name">公文預覽</span>
+          <button class="reload-btn" id="reload-btn" title="重新載入">↻</button>
+        </header>
+        <div class="preview-scroll">
+          <div class="preview-host" id="preview-host">
+            <div class="preview-placeholder" id="preview-status">載入中…</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 共用 Modal（系統管理） -->
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <span class="modal-title" id="modal-title">維護</span>
+        <button class="modal-close" id="modal-close" title="關閉">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+</body>
+</html>

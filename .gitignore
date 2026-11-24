@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# 產生的輸出檔
+output/
+preview/
+
+# 標楷體為 Windows 專有字型（kaiu.ttf / DFKai-SB），不可提交
+assets/*.ttf
+assets/*.ttc
+assets/*.otf
+
+# 本機 SQLite 資料庫
+*.db
+*.db-shm
+*.db-wal
+
+# 工具暫存
+.playwright-cli/
+.claude/settings.local.json
+
+# 環境變數與機密
+.env
+.env.*
+!.env.example
+
+# 作業系統／編輯器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+~$*.docx
